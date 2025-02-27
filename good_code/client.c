@@ -21,8 +21,6 @@ struct request_text {
   char message[TEXT_MAX];
 } packed;
 
-char buffer[BUFF_SIZE];
-//stack canary here
 void parseIncoming(char* data);
 
 struct termios origTerm;
@@ -44,6 +42,15 @@ int raw_terminal(){
   return 0;
 }
 
+void printFatalErr(int id){
+  if (id == 0){ //rec error
+    fprintf(stdout, "Fatal error parsing incoming message, aborting...\n");
+  }
+  // id == 1, send error
+  else fprintf(stdout, "Fatal error with input buffer, aborting ...\n)");
+  exit(EXIT_FAILURE);
+}
+
 int main(int argc, char** argv){
   if (argc != 2){
     fprintf(stdout, "Usage: ./chat <username>\n");
@@ -54,11 +61,11 @@ int main(int argc, char** argv){
     exit(EXIT_SUCCESS);
   } 
 
-  if (raw_mode() != 0){
+  if (raw_terminal() != 0){
     fprintf(stdout, "Fatal input error\n");
     exit(EXIT_FAILURE);
   }
-  atexit(cooked_mode);
+  atexit(cooked_terminal);
 
   //Connect to server
   int sockFile = socket(AF_INET, SOCK_DGRAM, 0);
@@ -86,20 +93,23 @@ int main(int argc, char** argv){
   //Login
   struct request_text login;
   login.request_type = 177;
-  strcpy(login.username, argv[1]);
-  //strncpy(login.username, argv[1], USERNAME_MAX);
+  //strncpy over strcpy, we chose the exact length to copy
+  strncpy(login.username, argv[1], USR_MAX);
   char tmp[26] = "[has joined the chatroom]";
-  strcpy(login.message, tmp);
+  strncpy(login.message, tmp, 26);
   if (sendto(sockFile, &login, sizeof(login), 0, (struct sockaddr*)&servAddr, sizeof(struct sockaddr)) == -1){
     fprintf(stdout, "Error logging in: %d\n", errno);
     exit(EXIT_FAILURE);
   }
 
   char* sendBuff = (char*)malloc(sizeof(char) * TEXT_MAX);
+  //these will alert us if a buffer has overflowed
+  int sendBuffCheck = 0;
   bzero(sendBuff, TEXT_MAX);
   int sendPos = 0;
 
   char recBuff[BUFF_SIZE];
+  int recBuffCheck = 0;
   socklen_t servLen = sizeof(servAddr);
   char incoming = -1;
 
@@ -128,11 +138,14 @@ int main(int argc, char** argv){
     }
     if (incoming == 10){ //newline - send message
 	fprintf(stdout, "\r\x1b[2K");
+	//check buffer is clean
+	if (sendBuffCheck != 0){
+	  printFatalErr(1);
+	}
 	struct request_text req;
 	req.request_type = 0x000000b1;
-	//strncpy(req.message, sendBuff, TEXT_MAX);
-	strcpy(req.username, argv[1]);
-	strcpy(req.message, sendBuff);
+	strncpy(req.username, argv[1], USR_MAX);
+	strncpy(req.message, sendBuff, TEXT_MAX);
 	if (sendto(sockFile, &req, sizeof(req), 0, (struct sockaddr*)&servAddr, sizeof(struct sockaddr)) == -1){
 	  fprintf(stdout, "Error sending message: %d\n", errno);
 	  errno = 0;
@@ -147,7 +160,10 @@ int main(int argc, char** argv){
     } else if (polls[0].revents & POLLIN){
     servSize = recvfrom(sockFile, recBuff, BUFF_SIZE, 0, (struct sockaddr*)&servAddr, &servLen);
     if (servSize > 0) {
-      //recBuff[servSize] = '\0';
+      //check if rec buffer has overflowed
+      if (recBuffCheck != 0) printFatalErr(0);
+      //add a terminator just in case
+      recBuff[servSize] = '\0';
       parseIncoming(recBuff);
       fprintf(stdout, "\r> %s", sendBuff);
     }}
@@ -160,16 +176,17 @@ int main(int argc, char** argv){
 void parseIncoming(char* data){
   unsigned char head = data[0];
   fprintf(stdout, "\r\x1b[2K");
-  //printf("head: %d\n", head);
   switch (head){
     case 177: //display text
     {
       char usr[USR_MAX];
       strncpy(usr, data+1, USR_MAX);
-      //usr[USR_MAX] = 0;
+      //add terminator just in case
+      usr[USR_MAX] = 0;
       char msg[TEXT_MAX];
       strncpy(msg, data+65, TEXT_MAX);
-      //say[SAY_MAX] = 0;
+      //add terminator just in case
+      msg[TEXT_MAX] = 0;
       fprintf(stdout, "%s says: %s\n", usr, msg);
     }
     break;

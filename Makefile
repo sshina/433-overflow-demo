@@ -12,11 +12,11 @@ bserver: ./bad_code/server.c
 
 good: client server
 
-client: client.c
-	$(CC) client.c $(CFLAGS) -o client
+client: ./good_code/client.c
+	$(CC) ./good_code/client.c $(CFLAGS) -o client
 
-server: server.c
-	$(CC) server.c $(CFLAGS) -o server
+server: ./good_code/server.c
+	$(CC) ./good_code/server.c $(CFLAGS) -o server
 
 clean:
 	rm -f client server badserver badclient *.o

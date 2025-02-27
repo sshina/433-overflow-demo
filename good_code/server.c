@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
-#include "raw.h"
 #include <sys/socket.h>
 #include <string.h>
 #include <strings.h>
@@ -37,7 +36,8 @@ void parseIncoming(char data[BUFF_SIZE], int port){
       {
 	//check if login. this is not good, the chatroom will not connect new users
 	//after 10 have logged in. but for demonstrating buffer overflows it doesnt matter
-	if (strcmp("[has joined the chatroom]",(data+65)) == 0){
+	//Now using strncmp so an attacker can't hide a payload in a login packet
+	if (strncmp("[has joined the chatroom]",(data+65),26) == 0){
 	  if (connectedSize < 10){
 	    connectedPorts[connectedSize++] = port;
 	  } 
@@ -45,9 +45,9 @@ void parseIncoming(char data[BUFF_SIZE], int port){
 	//construct the packet
 	struct request_text* res = (struct request_text*)malloc(sizeof(struct request_text));
 	res->request_type = 177;
-	//strncpy(res->username, username, USR_MAX);
-	strcpy(res->username, (data+1));
-	strcpy(res->message, (data+65));
+	//strncpy over strcpy
+	strncpy(res->username, (data+1), USR_MAX);
+	strncpy(res->message, (data+65), TEXT_MAX);
 	
 	//send to all users
 	struct sockaddr_in cli;
@@ -98,6 +98,8 @@ int main(int argc, char** argv){
   socklen_t cliLen = sizeof(cliAddr);
   int cliSize;
   char buffer[BUFF_SIZE];
+  //likely not to be zero if buffer overflows
+  int bufferCheck = 0;
 
   fd_set read_fds;
   struct timeval timeout;
@@ -115,7 +117,13 @@ int main(int argc, char** argv){
       if (FD_ISSET(sockFile, &read_fds)){
 	cliSize = recvfrom(sockFile, buffer, BUFF_SIZE, 0, (struct sockaddr*)&cliAddr, &cliLen);
 	if (cliSize > 0){
-	  //buffer[cliSize] = '\0';
+	  //check if buffer overflowed
+	  if (bufferCheck != 0){
+	    fprintf(stdout, "Fatal buffer error\n");
+	    exit(EXIT_FAILURE);
+	  }
+	  //add terminator just in case
+	  buffer[cliSize] = '\0';
           parseIncoming(buffer, cliAddr.sin_port);
 	}else if ((cliSize < 0) && (errno != EWOULDBLOCK)){
 	  fprintf(stdout, "Recieve error: %d\n", errno);
