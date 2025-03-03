@@ -21,8 +21,8 @@ struct request_text {
   char message[TEXT_MAX];
 } packed;
 
-char buffer[BUFF_SIZE];
-//stack canary here
+char recBuff[BUFF_SIZE];
+
 void parseIncoming(char* data);
 void cooked_terminal(void);
 int raw_terminal(void);
@@ -82,7 +82,6 @@ int main(int argc, char** argv){
   bzero(sendBuff, TEXT_MAX);
   int sendPos = 0;
 
-  char recBuff[BUFF_SIZE];
   socklen_t servLen = sizeof(servAddr);
   char incoming = -1;
 
@@ -148,11 +147,9 @@ void parseIncoming(char* data){
     case 177: //display text
     {
       char usr[USR_MAX];
-      strncpy(usr, data+1, USR_MAX);
-      //usr[USR_MAX] = 0;
+      strcpy(usr, data+1);
       char msg[TEXT_MAX];
-      strncpy(msg, data+65, TEXT_MAX);
-      //say[SAY_MAX] = 0;
+      strncpy(msg, data+65);
       fprintf(stdout, "%s says: %s\n", usr, msg);
     }
     break;

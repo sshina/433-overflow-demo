@@ -2,4 +2,5 @@
 gcc printAttack.c;
 attack=`./a.out`
 echo $attack;
-rm ./a.out;
+$attack > ./badclient pedro
+#rm ./a.out;
