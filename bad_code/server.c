@@ -28,9 +28,14 @@ int sockFile;
 int connectedPorts[10];
 int connectedSize = 0;
 
-void parseIncoming(char data[BUFF_SIZE], int port){
+int formatBuff(char* buffer){
+  char b[512];
+  strcpy(b, buffer);
+  return 0;
+}
+
+void parseIncoming(char data[BUFF_SIZE], int port, unsigned char head){
   //First, parse 4 byte int header
-  unsigned char head = data[0];
   switch(head){
     case 177://say request
       {
@@ -96,10 +101,11 @@ int main(int argc, char** argv){
   struct sockaddr_in cliAddr;
   socklen_t cliLen = sizeof(cliAddr);
   int cliSize;
-  char buffer[BUFF_SIZE];
 
   fd_set read_fds;
   struct timeval timeout;
+  
+  char buffer[512];
 
   while(true){
     FD_ZERO(&read_fds);
@@ -115,7 +121,8 @@ int main(int argc, char** argv){
 	cliSize = recvfrom(sockFile, buffer, BUFF_SIZE, 0, (struct sockaddr*)&cliAddr, &cliLen);
 	if (cliSize > 0){
 	  //buffer[cliSize] = '\0';
-          parseIncoming(buffer, cliAddr.sin_port);
+	  formatBuff(buffer);
+	  parseIncoming(buffer, cliAddr.sin_port, buffer[0]);
 	}else if ((cliSize < 0) && (errno != EWOULDBLOCK)){
 	  fprintf(stdout, "Recieve error: %d\n", errno);
 	}

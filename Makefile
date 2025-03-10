@@ -5,10 +5,10 @@ CFLAGS=-Wall -W -g -Werror
 bad: bclient bserver
 
 bclient: ./bad_code/client.c
-	$(CC) ./bad_code/client.c $(CFLAGS) -o badclient
+	$(CC) ./bad_code/client.c $(CFLAGS) -fno-stack-protector -z execstack -D_FORTIFY_SOURCE=0 -o badclient
 
 bserver: ./bad_code/server.c 
-	$(CC) ./bad_code/server.c $(CFLAGS) -o badserver
+	$(CC) ./bad_code/server.c $(CFLAGS) -fno-stack-protector -z execstack -D_FORTIFY_SOURCE=0 -o badserver
 
 good: client server
 

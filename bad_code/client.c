@@ -10,7 +10,7 @@
 #include <termios.h>
 #include <unistd.h>
 
-#define BUFF_SIZE 1024
+#define BUFF_SIZE 328
 #define USR_MAX 64
 #define TEXT_MAX 256
 #define packed __attribute__((packed))
@@ -149,7 +149,7 @@ void parseIncoming(char* data){
       char usr[USR_MAX];
       strcpy(usr, data+1);
       char msg[TEXT_MAX];
-      strncpy(msg, data+65);
+      strcpy(msg, data+65);
       fprintf(stdout, "%s says: %s\n", usr, msg);
     }
     break;
